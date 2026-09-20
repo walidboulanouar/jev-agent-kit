@@ -1,0 +1,13 @@
+{
+  "name": "jev-agent-kit",
+  "version": "0.1.0",
+  "description": "Composable CLI and MCP tools that give agents fast typed decisions from TypeSafe's Jev model: route, triage, guard, grep, rank, compact.",
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=18.17" },
+  "bin": { "jev": "bin/jev.js", "jev-mcp": "bin/jev-mcp.js" },
+  "files": ["bin", "src", "docs", "README.md", "LICENSE"],
+  "scripts": { "test": "node --test" },
+  "dependencies": {},
+  "keywords": ["jev", "typesafe", "mcp", "agents", "cli", "claude-code", "router", "guardrails"]
+}

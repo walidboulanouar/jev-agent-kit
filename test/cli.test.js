@@ -130,10 +130,10 @@ test('cli: strict flags, numeric checks, friendly errors', async () => {
 test('cli guard: flag-like words stay part of the action', async () => {
   const m = await startMock();
   const env = { JEV_API_URL: m.url };
-  const r = await run(['guard', 'cat', '-f', '/etc/shadow', '[T]', '--json'], { env });
+  const r = await run(['guard', '--json', 'cat', '-f', '/etc/shadow', '[T]'], { env });
   assert.equal(r.code, 1); // [T] in the action makes the mock say destructive
   assert.equal(m.seen.at(-1).body.state.action, 'cat -f /etc/shadow [T]');
-  const ctx = await run(['guard', 'ls', '--context', 'list files'], { env });
+  const ctx = await run(['guard', '--context', 'list files', 'ls'], { env });
   assert.equal(ctx.code, 0);
   assert.equal(m.seen.at(-1).body.state.context, 'list files');
   await m.close();

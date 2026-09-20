@@ -23,7 +23,7 @@ Commands
   judge   -q "question" -q "question" run several yes/no checks over the input text
   route   <task> -c id=description -c id=description   pick a candidate for a task
   triage  -o label=meaning -o label=meaning            label each input line
-  guard   [--context "..."] <action>  allow, ask or deny an action. Quote the action.
+  guard   [--context "..."] [--json] <action...>  allow, ask or deny. Flags go before the action.
   guard   --hook                      Claude Code PreToolUse hook mode (JSON on stdin)
   grep    <description>               keep input lines that match a description
   rank    <criterion>                 order input lines best to worst
@@ -75,7 +75,29 @@ const ALIASES = { '-t': 't', '--threshold': 't', '-f': 'file', '--file': 'file',
 
 function bad(msg) { return new JevError(msg, { code: 'bad_input' }); }
 
+// guard: only --context, --json and --hook are flags, and only before the action.
+// Everything from the first other word on is the action, byte for byte, so a
+// flag-looking word inside a command can never change what gets judged.
+function parseGuard(argv) {
+  const flags = { _: [], multi: {} };
+  let i = 0;
+  for (; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--json') flags.json = true;
+    else if (a === '--hook') flags.hook = true;
+    else if (a === '--context') {
+      if (argv[i + 1] === undefined) throw bad('--context needs a value');
+      flags.context = argv[++i];
+    } else if (a === '--') { i++; break; }
+    else break;
+  }
+  flags._ = argv.slice(i);
+  if (flags.hook && flags._.length) throw bad('--hook reads the request from stdin and takes no action words');
+  return flags;
+}
+
 function parse(cmd, argv) {
+  if (cmd === 'guard') return parseGuard(argv);
   const spec = SPECS[cmd];
   const flags = { _: [], multi: {} };
   for (let i = 0; i < argv.length; i++) {
@@ -202,7 +224,7 @@ export async function main(argv, io = {}) {
       }
       case 'guard': {
         if (flags.hook) return await guardHook(client, out, err, io);
-        if (!words) throw bad('guard needs an action in quotes. Example: jev guard "git reset --hard" --context "fix a typo"');
+        if (!words) throw bad('guard needs an action. Example: jev guard --context "fix a typo" "git reset --hard"');
         const r = await tools.guard(client, { action: words, context: flags.context || '' });
         emit(r, (d) => `${d.decision}${d.reasons.length ? ': ' + d.reasons.join(', ') : ''}`);
         return { allow: 0, deny: 1, ask: 2 }[r.decision];
@@ -221,7 +243,7 @@ export async function main(argv, io = {}) {
         if (!words) throw bad('rank needs a criterion');
         const lines = await inputLines();
         const items = lines.map((text, i) => ({ id: i + 1, text })).filter((x) => x.text.trim());
-        const r = await tools.rank(client, { items, criterion: words, top: flags.top ? num(flags.top, '--top', 1, 1e6) : null });
+        const r = await tools.rank(client, { items, criterion: words, top: flags.top !== undefined ? num(flags.top, '--top', 1, 1e6) : null });
         if (flags.jsonl) jsonl(r.ranked);
         else if (flags.raw) r.ranked.forEach((x) => out(x.text));
         else emit(r, (d) => d.ranked.map((x) => `${x.score}\t${x.text}`).join('\n'));

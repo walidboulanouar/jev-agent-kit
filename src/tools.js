@@ -10,6 +10,7 @@ const PARALLEL = 4;
 const MAX_LINES = 5000;
 
 const round = (n, d = 3) => (typeof n === 'number' ? Math.round(n * 10 ** d) / 10 ** d : n);
+const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const blank = (s) => !String(s ?? '').trim();
 
 function roundMap(m) {
@@ -50,7 +51,7 @@ export async function check(client, { text, question, threshold = 0.5 }) {
   needStr(text, 'text'); needStr(question, 'question'); needNum(threshold, 'threshold', 0, 1);
   const a = await client.ask({ text: clip(text, 8000) }, { q: noulQ(`${question} Judge only \`text\`.`) });
   const p = a.q?.noul;
-  if (typeof p !== 'number') throw new JevError('the model returned no answer', { code: 'api' });
+  if (!isNum(p)) throw new JevError('the model returned no answer', { code: 'api' });
   return { probability: round(p), answer: p >= threshold, threshold };
 }
 
@@ -103,7 +104,7 @@ export async function route(client, { task, candidates, k = 3, minConfidence = 0
     .sort((x, y) => y[1] - x[1])
     .slice(0, k)
     .map(([id, p]) => ({ id, probability: round(p) }));
-  const abstained = r.choice === 'none' || typeof r.choice !== 'string' || (r.confidence ?? 1) < minConfidence;
+  const abstained = r.choice === 'none' || typeof r.choice !== 'string' || !isNum(r.confidence) || r.confidence < minConfidence;
   return { choice: abstained ? null : r.choice, abstained, confidence: round(r.confidence), ranking };
 }
 
@@ -145,7 +146,7 @@ export async function triage(client, { items, path, labels, minConfidence = 0.5 
     const a = await client.ask(state, qs);
     return part.map((x, i) => {
       const r = a[`i${i}`] || {};
-      const sure = typeof r.choice === 'string' && (r.confidence ?? 1) >= minConfidence;
+      const sure = typeof r.choice === 'string' && isNum(r.confidence) && r.confidence >= minConfidence;
       return { id: x.id, n: x.id, text: x.text, label: sure ? r.choice : null, guess: r.choice ?? null, confidence: round(r.confidence), probabilities: roundMap(r.probabilities) };
     });
   });
@@ -162,21 +163,26 @@ export const DEFAULT_POLICY = {
 
 // Fast path for a few catastrophic patterns. It can only tighten a decision
 // (deny or ask). It never allows anything, so it adds no false comfort.
+// Every pattern uses bounded quantifiers and runs on a bounded window, so a
+// hostile 1 MB action cannot make it slow (ReDoS).
 const HARD_DENY = [
-  [/\brm\s+(-[a-zA-Z]*[rf][a-zA-Z]*\s+)+(\/|~|\$HOME)(\s|\/?$|\/\*)/, 'recursive delete of root or home'],
-  [/\bmkfs(\.\w+)?\b/, 'formats a disk'],
-  [/\bdd\b[^\n]*\bof=\/dev\/(sd|nvme|disk|hd)/, 'writes raw to a disk device'],
-  [/:\(\)\s*\{\s*:\|:&\s*\};:/, 'fork bomb'],
+  [/\brm\s{1,5}(-[a-zA-Z]{1,10}\s{1,5}){1,4}(\/|~|\$HOME)(\s|\/?$|\/\*)/, 'recursive delete of root or home'],
+  [/\brm\b[^\n]{0,80}--no-preserve-root/, 'recursive delete with the root safeguard off'],
+  [/(^|[;&|]\s{0,5}|\bsudo\s{1,5})mkfs(\.\w{1,10})?\b/, 'formats a disk'],
+  [/\bdd\b[^\n]{0,200}\bof=\/dev\/(sd|nvme|disk|hd)/, 'writes raw to a disk device'],
+  [/:\(\)\s{0,3}\{\s{0,3}:\|:&\s{0,3}\};:/, 'fork bomb'],
 ];
 const FORCE_ASK = [
-  [/\b(curl|wget)\b[^\n|]*\|\s*(sudo\s+)?(ba|z)?sh\b/, 'pipes a download into a shell'],
-  [/\bgit\s+push\b[^\n]*(--force\b|--force-with-lease\b|\s-f\b)/, 'force push'],
+  [/\b(curl|wget)\b[^\n|]{0,300}\|\s{0,5}(sudo\s{1,5})?(ba|z)?sh\b/, 'pipes a download into a shell'],
+  [/\bgit\s{1,5}push\b[^\n]{0,300}(--force\b|--force-with-lease\b|\s-f\b)/, 'force push'],
   [/\bchmod\s+-R\s+0?777\b/, 'recursive world-writable permissions'],
   [/\bDROP\s+(TABLE|DATABASE)\b/i, 'drops a database object'],
   [/(\/etc\/(shadow|sudoers)|(^|[\s\/~])\.ssh\/|\.aws\/credentials|\bid_(rsa|ed25519|ecdsa)\b|(^|[\s\/])\.env(\.\w+)?(\s|$))/i, 'touches a file that usually holds secrets'],
 ];
 
 const ACTION_MAX = 4000;
+const ACTION_HARD_MAX = 1_000_000;
+const SCAN_WINDOW = 20000;
 
 // Thresholds are clamped so a bad or hostile value cannot turn the guard off.
 function safePolicy(policy) {
@@ -195,6 +201,10 @@ export async function guard(client, { action, context = '', policy = {} }) {
   const pol = safePolicy(policy);
   const reasons = [];
   let floor = 'allow';
+  if (action.length > ACTION_HARD_MAX) {
+    return { decision: 'ask', reasons: ['action is larger than 1 MB and was not judged'], probabilities: null, risk: null, policy: pol, source: 'pattern', action: clip(action, 300) };
+  }
+  const scan = action.length > SCAN_WINDOW ? `${action.slice(0, SCAN_WINDOW / 2)}\n${action.slice(-SCAN_WINDOW / 2)}` : action;
   // A long action is judged on its head and tail, and never allowed outright.
   let judged = action;
   if (action.length > ACTION_MAX) {
@@ -204,9 +214,9 @@ export async function guard(client, { action, context = '', policy = {} }) {
     reasons.push('action is longer than 4000 characters and was only partly judged');
   }
   for (const [re, why] of HARD_DENY) {
-    if (re.test(action)) return { decision: 'deny', reasons: [`pattern: ${why}`], probabilities: null, risk: null, policy: pol, source: 'pattern', action: clip(action, 300) };
+    if (re.test(scan)) return { decision: 'deny', reasons: [`pattern: ${why}`], probabilities: null, risk: null, policy: pol, source: 'pattern', action: clip(action, 300) };
   }
-  for (const [re, why] of FORCE_ASK) if (re.test(action)) { floor = 'ask'; reasons.push(`pattern: ${why}`); }
+  for (const [re, why] of FORCE_ASK) if (re.test(scan)) { floor = 'ask'; reasons.push(`pattern: ${why}`); }
 
   const state = { action: judged, context: clip(context, 2000) };
   const a = await client.ask(state, {
@@ -215,7 +225,7 @@ export async function guard(client, { action, context = '', policy = {} }) {
     offtask: noulQ('Is `action` unrelated to or beyond what `context` says the user asked for? If `context` is empty, answer false.'),
     risk: scoreQ('How risky is running `action` for the user, considering harm and reversibility?', ['harmless', 'low', 'medium', 'high', 'severe']),
   });
-  const complete = ['destructive', 'exfiltration', 'offtask'].every((k) => typeof a[k]?.noul === 'number') && typeof a.risk?.score === 'number';
+  const complete = ['destructive', 'exfiltration', 'offtask'].every((k) => isNum(a[k]?.noul)) && isNum(a.risk?.score);
   const p = { destructive: a.destructive?.noul ?? 0, exfiltration: a.exfiltration?.noul ?? 0, offtask: a.offtask?.noul ?? 0 };
   const risk = a.risk?.score ?? 0;
   let decision = floor;
@@ -255,7 +265,7 @@ export async function grep(client, { query, lines, path, threshold = 0.7, invert
     const qs = {};
     part.forEach((_, i) => { qs[`l${i}`] = noulQ(`Does \`lines[${i}]\` match this description: ${query}`); });
     const a = await client.ask(state, qs);
-    return part.map((x, i) => ({ n: x.n, line: x.text, probability: typeof a[`l${i}`]?.noul === 'number' ? round(a[`l${i}`].noul) : null }));
+    return part.map((x, i) => ({ n: x.n, line: x.text, probability: isNum(a[`l${i}`]?.noul) ? round(a[`l${i}`].noul) : null }));
   });
   const judged = res.flat();
   // A missing answer is unknown, so it appears in neither the matches nor the inverse.
@@ -278,7 +288,7 @@ export async function rank(client, { items, path, criterion, levels = DEFAULT_LE
     const qs = {};
     part.forEach((_, i) => { qs[`s${i}`] = scoreQ(`Rate \`items[${i}]\` on: ${criterion}`, levels); });
     const a = await client.ask(state, qs);
-    return part.map((x, i) => ({ id: x.id, n: x.id, text: x.text, score: typeof a[`s${i}`]?.score === 'number' ? round(a[`s${i}`].score, 1) : null, confidence: round(a[`s${i}`]?.confidence) }));
+    return part.map((x, i) => ({ id: x.id, n: x.id, text: x.text, score: isNum(a[`s${i}`]?.score) ? round(a[`s${i}`].score, 1) : null, confidence: round(a[`s${i}`]?.confidence) }));
   });
   const flat = res.flat();
   const scored = flat.filter((x) => x.score !== null).sort((x, y) => y.score - x.score);
@@ -303,6 +313,9 @@ export async function compact(client, { lines, path, task, threshold = 0.5, cont
   const capped = all.slice(0, max);
   let alwaysRe = null;
   if (always) {
+    if (typeof always !== 'string' || always.length > 300) throw new JevError('always must be a string of at most 300 characters', { code: 'bad_input' });
+    // reject nested quantifiers such as (a+)+ , the classic catastrophic-backtracking shape
+    if (/(\+|\*|\{\d*,?\d*\})\s*\)\s*(\+|\*|\{)/.test(always)) throw new JevError('always looks like a pattern that can hang. Simplify it.', { code: 'bad_input' });
     try { alwaysRe = new RegExp(always, 'i'); } catch { throw new JevError('always is not a valid regular expression', { code: 'bad_input' }); }
   }
   const work = capped.map((text, i) => ({ i, text })).filter((x) => !blank(x.text));
@@ -312,12 +325,12 @@ export async function compact(client, { lines, path, task, threshold = 0.5, cont
     part.forEach((_, i) => { qs[`l${i}`] = noulQ(`Is \`lines[${i}]\` still useful for the work described in \`task\`?`); });
     const a = await client.ask(state, qs);
     // a missing answer keeps the line
-    return part.map((x, i) => ({ i: x.i, p: typeof a[`l${i}`]?.noul === 'number' ? a[`l${i}`].noul : 1 }));
+    return part.map((x, i) => ({ i: x.i, p: isNum(a[`l${i}`]?.noul) ? a[`l${i}`].noul : 1 }));
   });
   const keep = new Set();
   const pinned = new Set();
   res.flat().forEach((r) => {
-    const forced = alwaysRe && alwaysRe.test(capped[r.i]);
+    const forced = alwaysRe && alwaysRe.test(String(capped[r.i]).slice(0, 600));
     if (forced) pinned.add(r.i);
     if (r.p >= threshold || forced) for (let d = -context; d <= context; d++) keep.add(r.i + d);
   });

@@ -65,8 +65,15 @@ export const TOOLS = [
   {
     name: 'jev_compact',
     description: 'Cut a long log or tool output down to the lines that still matter for a task. Keeps order and original 1-based line numbers. Lines that look like errors are always kept. Prefer path over pasting lines, because pasting costs as many tokens as the log.',
-    inputSchema: { type: 'object', properties: { path: pathProp, lines: strList('The lines to compact, if no path'), task: str('What the agent is working on'), threshold: num('Keep lines at or above this relevance. Default 0.5'), context: num('Also keep this many lines around each kept line. Default 1'), always: str('Regular expression for lines to keep whatever the model says. Default matches error, failed, fatal, exception, panic, traceback. Pass an empty string to turn off.') }, required: ['task'] },
-    run: (c, a) => tools.compact(c, a),
+    inputSchema: { type: 'object', properties: { path: pathProp, lines: strList('The lines to compact, if no path'), task: str('What the agent is working on'), threshold: num('Keep lines at or above this relevance. Default 0.5'), context: num('Also keep this many lines around each kept line. Default 1'), alwaysWords: strList('Words that force a line to be kept whatever the model says (matched as plain text, case-insensitive). Default keeps lines with error, failed, fatal, exception, panic, traceback. Pass an empty list to turn this off.') }, required: ['task'] },
+    run: (c, a) => {
+      const { alwaysWords, always, ...rest } = a; // no caller-supplied regex over MCP
+      if (Array.isArray(alwaysWords)) {
+        const esc = alwaysWords.filter((w) => typeof w === 'string' && w).slice(0, 50).map((w) => w.slice(0, 60).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        rest.always = esc.join('|');
+      }
+      return tools.compact(c, rest);
+    },
   },
   {
     name: 'jev_judge',
@@ -139,6 +146,10 @@ export function serve(client, { input = process.stdin, output = process.stdout, 
   const pending = new Set();
   rl.on('line', (line) => {
     if (!line.trim()) return;
+    if (line.length > 5_000_000) {
+      output.write(JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Request too large' } }) + '\n');
+      return;
+    }
     let msg;
     try { msg = JSON.parse(line); } catch {
       output.write(JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }) + '\n');

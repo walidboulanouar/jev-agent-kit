@@ -61,7 +61,7 @@ Questions refer to state by name in backticks. `noul` returns a probability, `ch
 ```bash
 cat build.log | jev compact "fix the failing test"
 jev triage -o bug="something broken" -o ask="a question" -o idea="a feature request" --file issues.txt
-jev guard "$COMMAND" --context "$USER_REQUEST"   # exit 0 allow, 2 ask, 1 deny, 3 error
+jev guard --context "$USER_REQUEST" "$COMMAND"   # exit 0 allow, 2 ask, 1 deny, 3 error
 ```
 
 If `jev` is not on the path, use `node /path/to/jev-agent-kit/bin/jev.js`.

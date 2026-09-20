@@ -87,6 +87,7 @@ export function createClient(opts = {}) {
           headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
           body,
           signal: controller.signal,
+          redirect: 'error',
         });
         if (res.ok) {
           const data = await res.json();
@@ -123,8 +124,9 @@ export function createClient(opts = {}) {
 // The key travels with every request, so refuse to send it over plain http to a remote host.
 function assertSafeUrl(url) {
   let u;
-  try { u = new URL(url); } catch { throw new JevError(`Invalid API URL: ${url}`, { code: 'bad_input' }); }
+  try { u = new URL(url); } catch { throw new JevError('Invalid API URL', { code: 'bad_input' }); }
   const local = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(u.hostname);
+  if (u.username || u.password) throw new JevError('API URL must not contain credentials', { code: 'bad_input' });
   if (u.protocol !== 'https:' && !local) {
     throw new JevError('API URL must use https (plain http is allowed only for localhost)', { code: 'bad_input' });
   }

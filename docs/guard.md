@@ -19,7 +19,8 @@
 - Off task alone never denies. It can only ask, and it does nothing without `--context` (the CLI) or `context` (MCP). In hook mode there is no user request to compare with, so it is inactive.
 - The MCP tool does not accept thresholds. The caller is the agent being guarded, so it must not be able to loosen them. The Node function accepts a `policy` object, and values are clamped so they cannot switch the checks off.
 - For Write and Edit calls in hook mode, the file path and the first 800 characters of the content are judged.
-- In the CLI, quote the action. Words that look like `jev guard` flags (`--context`, `--json`, `--hook`) are read as flags. Everything else, such as `cat -f x`, is part of the action.
+- In the CLI, flags (`--context`, `--json`, `--hook`) must come before the action. Everything from the first other word on is the action, byte for byte, so `jev guard cat -f x --hook` judges `cat -f x --hook`. `--hook` cannot be combined with action words.
+- The patterns run on a bounded window of the action, and an action over 1 MB is not judged at all (it returns ask).
 
 ## What it is not
 

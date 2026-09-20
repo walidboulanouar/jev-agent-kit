@@ -88,7 +88,7 @@ cp -r skills/jev ~/.claude/skills/
 
 Then ask Claude to use it: "use jev_route to pick which of these three skills fits this task" or "use jev_compact on build.log for the failing test".
 
-The MCP batch tools (`jev_compact`, `jev_grep`, `jev_triage`, `jev_rank`) accept a `path`, so the server reads the file and the agent does not have to paste a log into its own output. Paths must be inside the folder where the server started (or `JEV_ROOT`), and files that look like secrets (`.env`, keys, `.ssh`) are refused.
+The MCP batch tools (`jev_compact`, `jev_grep`, `jev_triage`, `jev_rank`) accept a `path`, so the server reads the file and the agent does not have to paste a log into its own output. Paths must be inside the folder where the server started (or `JEV_ROOT`), and only text and log files can be read (`.log`, `.txt`, `.md`, `.csv`, `.json` and a few more). Dotfiles and dot-folders, files with secret-looking names, files with several hard links, and the home directory as a root are refused. `jev_compact` takes `alwaysWords` (plain words) instead of a regular expression, so a caller cannot send a pattern that hangs the server.
 
 Any MCP client works. The server speaks newline-delimited JSON-RPC on stdio and supports protocol versions 2025-06-18, 2025-03-26 and 2024-11-05. Replies can come back out of order. Match them by `id`.
 
@@ -139,10 +139,10 @@ Rank by a criterion:
 jev rank "how concrete and specific the claim is" --top 3 < claims.txt
 ```
 
-Gate an action in a script. Quote the action:
+Gate an action in a script. Flags go before the action, and everything after the first non-flag word is the action, exactly as written:
 
 ```bash
-jev guard "delete every file in the home directory" --context "user asked to fix a typo"
+jev guard --context "user asked to fix a typo" "delete every file in the home directory"
 # deny: destructive 0.97
 ```
 

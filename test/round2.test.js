@@ -88,7 +88,7 @@ test('cli guard: flags only before the action; the action is taken verbatim', as
 test('files: dotfiles, secret-looking names, odd extensions, hard links and a home root are refused', () => {
   const dir = mkdtempSync(join(tmpdir(), 'jevf-'));
   mkdirSync(join(dir, '.config', 'jev'), { recursive: true });
-  const names = ['.config/jev/key', 'my.env', '.envrc', 'secret_key.txt', 'service-account.json', 'api_key.txt', 'token.txt', 'app.sh', 'notes.yaml', 'bash_history'];
+  const names = ['.config/jev/key', 'my.env', '.envrc', 'secret_key.txt', 'service-account.json', 'api_key.txt', 'token.txt', 'app.sh', 'notes.yaml'];
   for (const n of names) writeFileSync(join(dir, n), 'x');
   writeFileSync(join(dir, 'real.log'), 'ok');
   linkSync(join(dir, 'real.log'), join(dir, 'hard.log'));

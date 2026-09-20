@@ -125,3 +125,23 @@ test('cli: --top with an empty value is rejected', async () => {
   assert.equal(r.code, 3);
   await m.close();
 });
+
+test('guard --hook prints nothing for a safe verdict and never prints allow', async () => {
+  const m = await startMock();
+  const env = { JEV_API_URL: m.url };
+  const safe = await run(['guard', '--hook'], { env, input: JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'ls -la' } }) });
+  assert.equal(safe.code, 0);
+  assert.equal(safe.out.trim(), '');
+  const risky = await run(['guard', '--hook'], { env, input: JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'maybe [M]' } }) });
+  assert.equal(JSON.parse(risky.out).hookSpecificOutput.permissionDecision, 'ask');
+  assert.ok(!/"allow"/.test(safe.out + risky.out));
+  await m.close();
+});
+
+test('files: ordinary names that only look secret-ish are readable', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'jevh-'));
+  for (const n of ['tokenizer.txt', 'history.log', 'key-notes.md', 'monkey.log']) writeFileSync(join(dir, n), 'ok');
+  for (const n of ['tokenizer.txt', 'history.log', 'key-notes.md', 'monkey.log']) assert.equal(readTextFile(n, { root: dir }), 'ok', n);
+  writeFileSync(join(dir, 'token.txt'), 'x');
+  assert.throws(() => readTextFile('token.txt', { root: dir }), (e) => e.code === 'bad_input');
+});

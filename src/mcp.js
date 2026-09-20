@@ -22,7 +22,7 @@ export const TOOLS = [
   {
     name: 'jev_choose',
     description: 'Pick one option for a text. Options is an object mapping option name to a plain-English meaning. Returns the choice, a probability per option and a confidence.',
-    inputSchema: { type: 'object', properties: { text: str('The text to classify'), question: str('What is being decided'), options: { type: 'object', description: 'Map of option name to meaning', additionalProperties: { type: 'string' } } }, required: ['text', 'options'] },
+    inputSchema: { type: 'object', properties: { text: str('The text to classify'), question: str('What is being decided'), options: { type: 'object', description: 'Map of option name to meaning', additionalProperties: { type: 'string' } }, minConfidence: num('Below this confidence the choice is null. Default 0') }, required: ['text', 'options'] },
     run: (c, a) => tools.choose(c, a),
   },
   {
@@ -45,7 +45,7 @@ export const TOOLS = [
   },
   {
     name: 'jev_guard',
-    description: 'Judge an action before an agent runs it. Returns allow, ask or deny with reasons. It asks a human when unsure, never allows on an unreadable answer, and blocks a few catastrophic patterns without calling the model. If the result is ask, stop and check with the user. It is a second opinion, not a security boundary.',
+    description: 'A second opinion on an action before an agent runs it. Returns allow, ask or deny with reasons. It asks a human when unsure, never allows on an unreadable answer, and blocks a few catastrophic patterns without calling the model. If the result is ask, stop and check with the user. It is a second opinion, not a security boundary.',
     inputSchema: { type: 'object', properties: { action: str('What is about to run, for example a shell command'), context: str('What the user asked for. Without it the off-task check does nothing.') }, required: ['action'] },
     // thresholds are not exposed here: the caller is the agent being guarded
     run: (c, a) => tools.guard(c, { action: a.action, context: a.context }),

@@ -1,0 +1,55 @@
+{
+  "date": "2026-09-20",
+  "model": "jev-latest",
+  "guard": {
+    "risky": 15,
+    "safe": 15,
+    "riskyCaught": 15,
+    "riskyAllowed": 0,
+    "safeAllowed": 15,
+    "safeFlagged": 0,
+    "byPatternOnly": 0,
+    "missedActions": [],
+    "flaggedSafeActions": []
+  },
+  "compact": {
+    "modelOnlyNoContext": {
+      "keptLines": 9,
+      "of": 31,
+      "relevantKept": 8,
+      "relevantTotal": 12,
+      "recall": 0.67,
+      "precision": 0.89
+    },
+    "withDefaults": {
+      "keptLines": 25,
+      "of": 31,
+      "relevantKept": 12,
+      "relevantTotal": 12,
+      "recall": 1,
+      "precision": 0.48
+    },
+    "pinnedErrorsNoContext": {
+      "keptLines": 17,
+      "of": 31,
+      "relevantKept": 12,
+      "relevantTotal": 12,
+      "recall": 1,
+      "precision": 0.71
+    },
+    "grep": {
+      "keptLines": 4,
+      "of": 31,
+      "relevantKept": 4,
+      "relevantTotal": 12,
+      "recall": 0.33,
+      "precision": 1
+    },
+    "missedByModelOnly": [
+      "Found 2 errors in the same file, starting at: src/api/client.ts:42",
+      "npm ERR! code ELIFECYCLE",
+      "npm ERR! app@1.4.0 build: `tsc --noEmit -p tsconfig.json`",
+      "tsconfig.json: strict mode is enabled"
+    ]
+  }
+}

@@ -14,7 +14,7 @@
 ## Design choices
 
 - An unreadable or incomplete model answer gives ask, never allow.
-- In hook mode, any failure (network, bad key, bad input) gives ask. The hook prints its decision as JSON and exits 0.
+- In hook mode, any failure (network, bad key, bad input) gives ask. The hook prints ask or deny as JSON and exits 0. For a safe verdict it prints nothing, so Claude Code's normal permission flow decides. It never prints allow, because a hook allow can skip the user's permission prompts.
 - An action longer than 4,000 characters is judged on its first and last 2,000 characters and can never be allowed outright.
 - Off task alone never denies. It can only ask, and it does nothing without `--context` (the CLI) or `context` (MCP). In hook mode there is no user request to compare with, so it is inactive.
 - The MCP tool does not accept thresholds. The caller is the agent being guarded, so it must not be able to loosen them. The Node function accepts a `policy` object, and values are clamped so they cannot switch the checks off.
@@ -27,3 +27,7 @@
 It is not a sandbox. It reads the text of an action and estimates risk. A command that hides its effect (an obfuscated script, a variable that expands to something dangerous, a file that is run later) can pass. Adversarial text in the action can also steer Jev. Use it as a second opinion next to real permissions, allow lists and sandboxes.
 
 The thresholds (0.85, 0.4 and 2.5) are starting points. They have not been measured on a labeled set of commands, so tune them against your own commands before you rely on them.
+
+## Measured
+
+On a small fixture of 15 risky and 15 routine commands, all 15 risky ones got ask or deny and none of the routine ones were flagged (2026-09-20, `jev-latest`). The commands were written by the maintainer and are not adversarial. See `docs/measured.json` and `scripts/eval.js`.

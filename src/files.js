@@ -11,7 +11,7 @@ import { JevError } from './client.js';
 // Only plain text and log-like files can be read. Dotfiles and dot-folders are refused
 // outright (.env, .ssh, .git, .config), and so is anything with a secret-looking name.
 const ALLOWED_EXT = new Set(['.log', '.txt', '.md', '.csv', '.tsv', '.out', '.err', '.jsonl', '.json', '.xml', '.html', '.diff', '.patch', '']);
-const SECRET_NAME = /(secret|token|credential|passw|private|service[-_]?account|api[-_]?key|apikey|(^|[-_.])key([-_.]|$)|\.env|id_(rsa|dsa|ecdsa|ed25519)|\.pem$|\.p12$|\.pfx$|\.kdbx$|history$)/i;
+const SECRET_NAME = /(secret|credential|passw(or)?d|private[-_]?key|service[-_]?account|api[-_]?key|apikey|^token(\.|$)|[-_.]token\.|^key$|\.env|id_(rsa|dsa|ecdsa|ed25519)|\.pem$|\.p12$|\.pfx$|\.kdbx$)/i;
 const MAX_BYTES = 5_000_000;
 
 export function readTextFile(p, { root = process.env.JEV_ROOT || process.cwd(), maxBytes = MAX_BYTES } = {}) {

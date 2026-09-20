@@ -34,7 +34,7 @@ To get `jev` on your path, run `npm link` inside the folder. The package has no 
 | `jev judge` | `jev_judge` | Several yes/no checks over one text. Passes only if all pass. A cheap done-check. |
 | `jev route` | `jev_route` | Pick the best model, skill or tool for a task. Abstains when nothing fits. |
 | `jev triage` | `jev_triage` | Label many items (emails, issues, tickets, log lines) |
-| `jev guard` | `jev_guard` | Judge an action before an agent runs it: allow, ask or deny |
+| `jev guard` | `jev_guard` | A second opinion on an action before an agent runs it: allow, ask or deny |
 | `jev grep` | `jev_grep` | Filter lines by meaning instead of by pattern |
 | `jev rank` | `jev_rank` | Order items best to worst on a criterion |
 | `jev compact` | `jev_compact` | Cut a long log to the lines that still matter for a task |
@@ -70,7 +70,7 @@ Scripts must treat 3 differently from 1. Under `set -e`, a definite "no" exits 1
 | 2 | `guard`: ask a human |
 | 3 | error: bad usage or input, missing key, network or API failure |
 
-`guard --hook` always exits 0, because its decision travels in the JSON it prints.
+`guard --hook` always exits 0, because its decision travels in the JSON it prints. `triage`, `rank` and `compact` also always exit 0 on success. Check their output, not their exit code.
 
 ## Use it from Claude Code
 
@@ -150,7 +150,7 @@ Add `--json` for one JSON document, or `--jsonl` (grep, compact, triage, rank) f
 
 ## Guard as a Claude Code hook
 
-`jev guard --hook` reads a Claude Code PreToolUse payload from stdin and prints a permission decision. If the API is down or the payload is unreadable, it asks instead of allowing. To try it, add this to `.claude/settings.json` in a project you want guarded:
+`jev guard --hook` reads a Claude Code PreToolUse payload from stdin. It prints `ask` or `deny` when it wants to stop something. When it finds nothing wrong it prints nothing, so Claude Code's own permission prompts still run. It never returns `allow`, because a hook `allow` can skip those prompts and a model probability should not grant that. If the API is down or the payload is unreadable, it asks. To try it, add this to `.claude/settings.json` in a project you want guarded:
 
 ```json
 {
@@ -173,6 +173,18 @@ It costs one API request per matching tool call, so keep the matcher narrow. In 
 - A missing model answer is never treated as a confident one. `guard` asks, `route` abstains, `triage` gives a null label, `grep` reports the line as unknown, `compact` keeps the line.
 - Unknown flags are errors, not silently ignored.
 
+## What has been measured
+
+`scripts/eval.js` runs the tools against labeled fixtures with the real model. Results from 2026-09-20 on `jev-latest`, small and written by the maintainer, so read them as a smoke test and not as a benchmark:
+
+| Tool | Fixture | Result |
+| --- | --- | --- |
+| `guard` | 15 risky and 15 routine shell commands | 15 of 15 risky ones got ask or deny. 0 of 15 routine ones were flagged. |
+| `compact` | a 31-line build log, 12 lines relevant to the task | Model alone (no context, no error pinning): kept 8 lines, 58% of the relevant ones. With error pinning and no neighbors: kept 17 lines, 100% of the relevant ones. With the defaults (pinning and 1 line of context): kept 24 lines, 100%. |
+| `grep` | the same log, threshold 0.5 | 4 lines matched, all relevant, but only 33% of the relevant lines. |
+
+What this says: `guard` did well on a small, mostly obvious set. It has not been tested on adversarial or obfuscated commands. `compact` and `grep` are conservative and will miss relevant lines on their own, which is why `compact` pins error-looking lines and keeps neighbors. Use `--around 0` when you want the tightest log. Full data is in [docs/measured.json](docs/measured.json). Run it yourself with `TYPESAFE_API_KEY=... node scripts/eval.js`.
+
 ## Limits
 
 Jev reads literally, is weak at math, counting and dates, and gets less accurate when the state has irrelevant text in it. Read [TypeSafe's limits page](https://docs.typesafe.ai/model-jaggedness/jev-1.13) before you trust a probability. Numbers from Jev are a ranking signal, not a measurement, and the confidence it reports has not been calibrated for these prompts. In particular:
@@ -181,19 +193,20 @@ Jev reads literally, is weak at math, counting and dates, and gets less accurate
 - `compact` and `grep` judge each line on its own. A stack trace loses meaning line by line, which is why `compact` keeps neighbors and error-looking lines by default.
 - `guard` reduces risk. It is not a security boundary. A command that hides its effect can pass, and adversarial text can steer any model. Keep real permissions in code.
 
-Cost is TypeSafe's input token price, about $0.042 per million tokens as of 2026-09-19. Check current pricing.
+Cost is TypeSafe's input token price. I have not verified it here, so check [typesafe.ai](https://typesafe.ai) for current pricing before you run this at volume.
 
 ## Develop
 
 ```bash
-node --test          # offline, against a fake API
+node --test                                   # offline, against a fake API
+JEV_LIVE=1 node --test test/live.test.js      # optional checks against the real API
 ```
 
 Tests run against a local mock of the API, so they cost nothing and need no key.
 
 ## Related
 
-See the [awesome-jev-use-cases](https://github.com/walidboulanouar/awesome-jev-use-cases) list for what others have built with Jev. Sponsored by [AY Automate](https://ayautomate.com).
+See the [awesome-jev-use-cases](https://github.com/walidboulanouar/awesome-jev-use-cases) list for what others have built with Jev. Built and sponsored by [AY Automate](https://ayautomate.com), an AI-native engineering company.
 
 ## License
 

@@ -273,7 +273,7 @@ export async function main(argv, io = {}) {
 
 // Claude Code PreToolUse hook. Reads the hook JSON, prints a permission decision.
 // Any failure asks the user instead of allowing. Exit code is always 0 because
-// the decision travels in the JSON.
+// the decision travels in the JSON. A safe verdict prints nothing (see below).
 async function guardHook(client, out, err, io) {
   let payload = null;
   try { payload = JSON.parse(await readInput(undefined, io)); } catch { payload = null; }
@@ -289,6 +289,10 @@ async function guardHook(client, out, err, io) {
       err(reason);
     }
   }
+  // An "allow" from a hook can skip Claude Code's own permission prompt. A model
+  // probability should never grant that, so allow prints nothing and the normal
+  // permission flow runs. Only ask and deny are ever printed.
+  if (decision === 'allow') return 0;
   out(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: decision, permissionDecisionReason: reason } }));
   return 0;
 }

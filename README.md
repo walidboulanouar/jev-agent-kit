@@ -54,7 +54,7 @@ To get `jev` on your path, run `npm link` inside the folder. The package has no 
 | `jev_guard` | `action` | `context` |
 | `jev_grep` | `query`, and `path` or `lines` | `threshold`, `invert` |
 | `jev_rank` | `criterion`, and `path` or `items` | `levels`, `top` |
-| `jev_compact` | `task`, and `path` or `lines` | `threshold`, `context`, `always` |
+| `jev_compact` | `task`, and `path` or `lines` | `threshold`, `context`, `alwaysWords` (list of plain words) |
 | `jev_ask` | `questions` | `state` |
 
 `triage` and `rank` results carry `id` and `n`, both the 1-based position of the item. `grep` and `compact` results carry `n` and `line`.
@@ -88,7 +88,7 @@ cp -r skills/jev ~/.claude/skills/
 
 Then ask Claude to use it: "use jev_route to pick which of these three skills fits this task" or "use jev_compact on build.log for the failing test".
 
-The MCP batch tools (`jev_compact`, `jev_grep`, `jev_triage`, `jev_rank`) accept a `path`, so the server reads the file and the agent does not have to paste a log into its own output. Paths must be inside the folder where the server started (or `JEV_ROOT`), and only text and log files can be read (`.log`, `.txt`, `.md`, `.csv`, `.json` and a few more). Dotfiles and dot-folders, files with secret-looking names, files with several hard links, and the home directory as a root are refused. `jev_compact` takes `alwaysWords` (plain words) instead of a regular expression, so a caller cannot send a pattern that hangs the server.
+The MCP batch tools (`jev_compact`, `jev_grep`, `jev_triage`, `jev_rank`) accept a `path`, so the server reads the file and the agent does not have to paste a log into its own output. Paths must be inside the folder where the server started (or `JEV_ROOT`), and only text and log files can be read (`.log`, `.txt`, `.md`, `.csv`, `.json` and a few more). Dotfiles and dot-folders, files with secret-looking names, files with several hard links, and the home directory (or a folder above it) as a root are refused. `jev_compact` takes `alwaysWords` (plain words) instead of a regular expression, so a caller cannot send a pattern that hangs the server.
 
 Any MCP client works. The server speaks newline-delimited JSON-RPC on stdio and supports protocol versions 2025-06-18, 2025-03-26 and 2024-11-05. Replies can come back out of order. Match them by `id`.
 

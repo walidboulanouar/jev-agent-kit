@@ -20,7 +20,7 @@ export function readTextFile(p, { root = process.env.JEV_ROOT || process.cwd(), 
   let realRoot;
   // reject escapes before touching the disk, so the message is always the same
   const lexical = relative(resolve(root), resolve(root, p));
-  if (lexical.startsWith('..') || isAbsolute(lexical)) {
+  if (lexical === '..' || lexical.startsWith('..' + sep) || isAbsolute(lexical)) {
     throw new JevError('path must be inside the working directory', { code: 'bad_input' });
   }
   try {
@@ -33,8 +33,10 @@ export function readTextFile(p, { root = process.env.JEV_ROOT || process.cwd(), 
   if (rel === '..' || rel.startsWith('..' + sep) || isAbsolute(rel)) {
     throw new JevError('path must be inside the working directory', { code: 'bad_input' });
   }
-  if (realRoot === realpathSync(homedir())) {
-    throw new JevError('refusing to serve files from the home directory. Start the server in a project folder or set JEV_ROOT.', { code: 'bad_input' });
+  // refuse the home directory itself and any folder above it
+  const homeRel = relative(realRoot, realpathSync(homedir()));
+  if (!(homeRel === '..' || homeRel.startsWith('..' + sep) || isAbsolute(homeRel))) {
+    throw new JevError('refusing to serve files from the home directory or a folder above it. Start the server in a project folder or set JEV_ROOT.', { code: 'bad_input' });
   }
   for (const part of rel.split(sep)) {
     if (part.startsWith('.') || SECRET_NAME.test(part)) {

@@ -166,7 +166,7 @@ export const DEFAULT_POLICY = {
 // Every pattern uses bounded quantifiers and runs on a bounded window, so a
 // hostile 1 MB action cannot make it slow (ReDoS).
 const HARD_DENY = [
-  [/\brm\s{1,5}(-[a-zA-Z]{1,10}\s{1,5}){1,4}(\/|~|\$HOME)(\s|\/?$|\/\*)/, 'recursive delete of root or home'],
+  [/\brm\s{1,5}(-[a-zA-Z]{1,10}\s{1,5}){1,4}["']?(\/|~|\$HOME)\/?\*?["']?(\s|$)/, 'recursive delete of root or home'],
   [/\brm\b[^\n]{0,80}--no-preserve-root/, 'recursive delete with the root safeguard off'],
   [/(^|[;&|]\s{0,5}|\bsudo\s{1,5})mkfs(\.\w{1,10})?\b/, 'formats a disk'],
   [/\bdd\b[^\n]{0,200}\bof=\/dev\/(sd|nvme|disk|hd)/, 'writes raw to a disk device'],
@@ -204,7 +204,8 @@ export async function guard(client, { action, context = '', policy = {} }) {
   if (action.length > ACTION_HARD_MAX) {
     return { decision: 'ask', reasons: ['action is larger than 1 MB and was not judged'], probabilities: null, risk: null, policy: pol, source: 'pattern', action: clip(action, 300) };
   }
-  const scan = action.length > SCAN_WINDOW ? `${action.slice(0, SCAN_WINDOW / 2)}\n${action.slice(-SCAN_WINDOW / 2)}` : action;
+  const raw = action.replace(/^Run shell command: /, '');
+  const scan = raw.length > SCAN_WINDOW ? `${raw.slice(0, SCAN_WINDOW / 2)}\n${raw.slice(-SCAN_WINDOW / 2)}` : raw;
   // A long action is judged on its head and tail, and never allowed outright.
   let judged = action;
   if (action.length > ACTION_MAX) {
@@ -256,7 +257,7 @@ export function describeToolCall(payload) {
 // ---- 5. grep: filter lines by meaning ----
 
 export async function grep(client, { query, lines, path, threshold = 0.7, invert = false, max = MAX_LINES }) {
-  needStr(query, 'query'); needNum(threshold, 'threshold', 0, 1);
+  needStr(query, 'query'); needNum(threshold, 'threshold', 0, 1); needNum(max, 'max', 1, MAX_LINES);
   const all = linesFrom({ lines, path });
   const capped = all.slice(0, max);
   const work = capped.map((text, i) => ({ n: i + 1, text })).filter((x) => !blank(x.text));
@@ -308,14 +309,14 @@ export async function rank(client, { items, path, criterion, levels = DEFAULT_LE
 export const DEFAULT_ALWAYS = '\\b(error|errors|failed|failure|fatal|exception|panic|traceback|assertion|segfault)\\b|\\bERR!|\\bE[A-Z]{3,}\\b';
 
 export async function compact(client, { lines, path, task, threshold = 0.5, context = 1, always = DEFAULT_ALWAYS, max = MAX_LINES }) {
-  needStr(task, 'task'); needNum(threshold, 'threshold', 0, 1); needNum(context, 'context', 0, 20);
+  needStr(task, 'task'); needNum(threshold, 'threshold', 0, 1); needNum(context, 'context', 0, 20); needNum(max, 'max', 1, MAX_LINES);
   const all = linesFrom({ lines, path });
   const capped = all.slice(0, max);
   let alwaysRe = null;
   if (always) {
     if (typeof always !== 'string' || always.length > 300) throw new JevError('always must be a string of at most 300 characters', { code: 'bad_input' });
     // reject nested quantifiers such as (a+)+ , the classic catastrophic-backtracking shape
-    if (/(\+|\*|\{\d*,?\d*\})\s*\)\s*(\+|\*|\{)/.test(always)) throw new JevError('always looks like a pattern that can hang. Simplify it.', { code: 'bad_input' });
+    if (/\)\s*(\+|\*|\{)/.test(always) || (always.match(/[+*]|\{\d/g) || []).length > 4) throw new JevError('always is too complex (no quantified groups, at most 4 repeats). Use simple words.', { code: 'bad_input' });
     try { alwaysRe = new RegExp(always, 'i'); } catch { throw new JevError('always is not a valid regular expression', { code: 'bad_input' }); }
   }
   const work = capped.map((text, i) => ({ i, text })).filter((x) => !blank(x.text));

@@ -127,10 +127,11 @@ test('rank sorts best first and trims to top', async () => {
 test('compact drops irrelevant lines, keeps order and context', async () => {
   const { mock, client } = await mk();
   const lines = ['noise', 'noise', 'key [T]', 'noise', 'noise', 'noise', 'key [T] two'];
-  const r = await tools.compact(client, { lines, task: 'find keys' });
-  assert.deepEqual(r.kept, ['key [T]', 'key [T] two']);
+  const r = await tools.compact(client, { lines, task: 'find keys', context: 0, always: '' });
+  assert.deepEqual(r.kept.map((k) => k.line), ['key [T]', 'key [T] two']);
+  assert.deepEqual(r.kept.map((k) => k.n), [3, 7]);
   assert.equal(r.droppedCount, 5);
-  const c = await tools.compact(client, { lines, task: 'find keys', context: 1 });
+  const c = await tools.compact(client, { lines, task: 'find keys', context: 1, always: '' });
   assert.equal(c.kept.length, 5);
   await mock.close();
 });
@@ -151,7 +152,7 @@ test('MCP: initialize, list, call, errors and notifications', async () => {
   const bad = await handle(client, { jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'jev_check', arguments: {} } });
   assert.equal(bad.result.isError, true);
   const none = await handle(client, { jsonrpc: '2.0', id: 6, method: 'tools/call', params: { name: 'nope' } });
-  assert.equal(none.result.isError, true);
+  assert.equal(none.error.code, -32602);
   const nm = await handle(client, { jsonrpc: '2.0', id: 7, method: 'nope/method' });
   assert.equal(nm.error.code, -32601);
   await mock.close();

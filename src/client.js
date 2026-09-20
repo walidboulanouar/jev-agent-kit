@@ -64,6 +64,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export function createClient(opts = {}) {
   const apiKey = resolveKey(opts.apiKey);
   const url = opts.url || process.env.JEV_API_URL || DEFAULT_URL;
+  assertSafeUrl(url);
   const model = opts.model || process.env.JEV_MODEL || DEFAULT_MODEL;
   const timeoutMs = opts.timeoutMs ?? 20000;
   const retries = opts.retries ?? 2;
@@ -119,6 +120,16 @@ export function createClient(opts = {}) {
   return { ask, stats, model, hasKey: !!apiKey };
 }
 
+// The key travels with every request, so refuse to send it over plain http to a remote host.
+function assertSafeUrl(url) {
+  let u;
+  try { u = new URL(url); } catch { throw new JevError(`Invalid API URL: ${url}`, { code: 'bad_input' }); }
+  const local = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(u.hostname);
+  if (u.protocol !== 'https:' && !local) {
+    throw new JevError('API URL must use https (plain http is allowed only for localhost)', { code: 'bad_input' });
+  }
+}
+
 function describeStatus(s) {
   if (s === 401) return 'Invalid or missing API key (401)';
   if (s === 422) return 'The API rejected the question format (422)';
@@ -157,5 +168,7 @@ export function chunk(arr, n) {
 // Trim one text to a safe size. Jev reads up to about 32k tokens of state per request.
 export function clip(text, max = 1500) {
   const s = String(text ?? '');
-  return s.length > max ? s.slice(0, max) : s;
+  if (s.length <= max) return s;
+  // cut on code points so a surrogate pair is never split
+  return Array.from(s).slice(0, max).join('');
 }

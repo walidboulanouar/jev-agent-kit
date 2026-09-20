@@ -60,7 +60,7 @@ test('cli grep, triage, compact, rank read stdin lines', async () => {
   assert.equal(g.out.trim(), '2: error [T]');
   const t = await run(['triage', '-o', 'other=rest', '-o', 'invoice=billing'], { env, input: 'invoice 1\nhello\n' });
   assert.deepEqual(t.out.trim().split('\n').map((l) => l.split('\t')[0]), ['invoice', 'other']);
-  const c = await run(['compact', 'find keys'], { env, input: 'noise\nkey [T]\nnoise\n' });
+  const c = await run(['compact', 'find keys', '--around', '0'], { env, input: 'noise\nkey [T]\nnoise\n' });
   assert.equal(c.out.trim(), 'key [T]');
   assert.match(c.err, /kept 1 of 3/);
   const r = await run(['rank', 'excitement', '--top', '1'], { env, input: 'a\nb!!\nc!\n' });
@@ -99,5 +99,66 @@ test('MCP over real stdio: initialize, list, call, and a parse error', async () 
   assert.ok(replies.find((x) => x.id === 2).result.tools.length >= 10);
   assert.equal(JSON.parse(replies.find((x) => x.id === 3).result.content[0].text).answer, true);
   assert.equal(replies.find((x) => x.error?.code === -32700).id, null);
+  await m.close();
+});
+
+test('cli: strict flags, numeric checks, friendly errors', async () => {
+  const m = await startMock();
+  const env = { JEV_API_URL: m.url };
+  const unk = await run(['check', 'q', '--bogus'], { env, input: 'x' });
+  assert.equal(unk.code, 3);
+  assert.match(unk.err, /Unknown option --bogus/);
+  const badT = await run(['grep', 'x', '-t', 'abc'], { env, input: 'a\n' });
+  assert.equal(badT.code, 3);
+  assert.match(badT.err, /-t must be a number/);
+  const badTop = await run(['rank', 'x', '--top', '-1'], { env, input: 'a\n' });
+  assert.equal(badTop.code, 3);
+  const nofile = await run(['check', 'q', '--file', '/nope/missing.txt'], { env });
+  assert.equal(nofile.code, 3);
+  assert.match(nofile.err, /cannot read file/);
+  const empty = await run(['compact', 'task'], { env, input: '' });
+  assert.equal(empty.code, 3);
+  assert.match(empty.err, /empty/i);
+  const noCmd = await run([], { env });
+  assert.equal(noCmd.code, 3);
+  const routeNone = await run(['route', 'task'], { env });
+  assert.equal(routeNone.code, 3);
+  assert.match(routeNone.err, /-c id=description/);
+  await m.close();
+});
+
+test('cli guard: flag-like words stay part of the action', async () => {
+  const m = await startMock();
+  const env = { JEV_API_URL: m.url };
+  const r = await run(['guard', 'cat', '-f', '/etc/shadow', '[T]', '--json'], { env });
+  assert.equal(r.code, 1); // [T] in the action makes the mock say destructive
+  assert.equal(m.seen.at(-1).body.state.action, 'cat -f /etc/shadow [T]');
+  const ctx = await run(['guard', 'ls', '--context', 'list files'], { env });
+  assert.equal(ctx.code, 0);
+  assert.equal(m.seen.at(-1).body.state.context, 'list files');
+  await m.close();
+});
+
+test('cli judge exit codes and grep | compact chaining with --raw', async () => {
+  const m = await startMock();
+  const env = { JEV_API_URL: m.url };
+  const pass = await run(['judge', '-q', 'a?', '-q', 'b?'], { env, input: 'yes [T]' });
+  const fail = await run(['judge', '-q', 'a?'], { env, input: 'plain' });
+  assert.equal(pass.code, 0);
+  assert.equal(fail.code, 1);
+  const g = await run(['grep', 'x', '--raw'], { env, input: 'a\nk [T]\nb\n' });
+  assert.equal(g.out, 'k [T]\n');
+  const c = await run(['compact', 'x', '--around', '0', '--always', ''], { env, input: g.out });
+  assert.equal(c.out.trim(), 'k [T]');
+  const j = await run(['grep', 'x', '--jsonl'], { env, input: 'a\nk [T]\n' });
+  assert.deepEqual(JSON.parse(j.out.trim()).n, 2);
+  await m.close();
+});
+
+test('cli compact never drops error lines by default', async () => {
+  const m = await startMock();
+  const r = await run(['compact', 'x', '--around', '0'], { env: { JEV_API_URL: m.url }, input: 'noise\nfatal: boom\nnoise\nnoise\nnoise\n' });
+  assert.equal(r.out.trim(), 'fatal: boom');
+  assert.match(r.err, /pinned/);
   await m.close();
 });

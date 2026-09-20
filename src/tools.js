@@ -146,7 +146,7 @@ export async function triage(client, { items, path, labels, minConfidence = 0.5 
     return part.map((x, i) => {
       const r = a[`i${i}`] || {};
       const sure = typeof r.choice === 'string' && (r.confidence ?? 1) >= minConfidence;
-      return { id: x.id, text: x.text, label: sure ? r.choice : null, guess: r.choice ?? null, confidence: round(r.confidence), probabilities: roundMap(r.probabilities) };
+      return { id: x.id, n: x.id, text: x.text, label: sure ? r.choice : null, guess: r.choice ?? null, confidence: round(r.confidence), probabilities: roundMap(r.probabilities) };
     });
   });
   return { results: res.flat() };
@@ -173,6 +173,7 @@ const FORCE_ASK = [
   [/\bgit\s+push\b[^\n]*(--force\b|--force-with-lease\b|\s-f\b)/, 'force push'],
   [/\bchmod\s+-R\s+0?777\b/, 'recursive world-writable permissions'],
   [/\bDROP\s+(TABLE|DATABASE)\b/i, 'drops a database object'],
+  [/(\/etc\/(shadow|sudoers)|(^|[\s\/~])\.ssh\/|\.aws\/credentials|\bid_(rsa|ed25519|ecdsa)\b|(^|[\s\/])\.env(\.\w+)?(\s|$))/i, 'touches a file that usually holds secrets'],
 ];
 
 const ACTION_MAX = 4000;
@@ -203,7 +204,7 @@ export async function guard(client, { action, context = '', policy = {} }) {
     reasons.push('action is longer than 4000 characters and was only partly judged');
   }
   for (const [re, why] of HARD_DENY) {
-    if (re.test(action)) return { decision: 'deny', reasons: [`pattern: ${why}`], probabilities: null, risk: null, policy: pol, source: 'pattern' };
+    if (re.test(action)) return { decision: 'deny', reasons: [`pattern: ${why}`], probabilities: null, risk: null, policy: pol, source: 'pattern', action: clip(action, 300) };
   }
   for (const [re, why] of FORCE_ASK) if (re.test(action)) { floor = 'ask'; reasons.push(`pattern: ${why}`); }
 
@@ -227,7 +228,7 @@ export async function guard(client, { action, context = '', policy = {} }) {
     for (const [k, v] of Object.entries(p)) if (v >= pol.ask) { decision = 'ask'; reasons.push(`${k} ${round(v, 2)}`); }
     if (risk >= pol.riskAsk) { decision = 'ask'; reasons.push(`risk ${round(risk, 1)} of 4`); }
   }
-  return { decision, reasons, probabilities: roundMap(p), risk: round(risk, 2), policy: pol, source: 'model' };
+  return { decision, reasons, probabilities: roundMap(p), risk: round(risk, 2), policy: pol, source: 'model', action: clip(action, 300) };
 }
 
 // Turn a Claude Code PreToolUse hook payload into an action string.
@@ -277,7 +278,7 @@ export async function rank(client, { items, path, criterion, levels = DEFAULT_LE
     const qs = {};
     part.forEach((_, i) => { qs[`s${i}`] = scoreQ(`Rate \`items[${i}]\` on: ${criterion}`, levels); });
     const a = await client.ask(state, qs);
-    return part.map((x, i) => ({ id: x.id, text: x.text, score: typeof a[`s${i}`]?.score === 'number' ? round(a[`s${i}`].score, 1) : null, confidence: round(a[`s${i}`]?.confidence) }));
+    return part.map((x, i) => ({ id: x.id, n: x.id, text: x.text, score: typeof a[`s${i}`]?.score === 'number' ? round(a[`s${i}`].score, 1) : null, confidence: round(a[`s${i}`]?.confidence) }));
   });
   const flat = res.flat();
   const scored = flat.filter((x) => x.score !== null).sort((x, y) => y.score - x.score);

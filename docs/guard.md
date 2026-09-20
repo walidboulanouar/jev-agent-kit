@@ -2,7 +2,7 @@
 
 `jev guard` judges an action before an agent runs it. It works in two steps.
 
-1. A short list of patterns catches a few catastrophic commands without calling the model: a recursive delete of the root or home folder, formatting a disk, writing raw to a disk device, a fork bomb. These return deny. Another list (piping a download into a shell, a forced git push, recursive world-writable permissions, dropping a database object) sets a floor of ask. The patterns can only tighten a decision. They never allow anything.
+1. A short list of patterns catches a few catastrophic commands without calling the model: a recursive delete of the root or home folder, formatting a disk, writing raw to a disk device, a fork bomb. These return deny. Another list (piping a download into a shell, a forced git push, recursive world-writable permissions, dropping a database object, touching files that usually hold secrets such as /etc/shadow, .ssh, .aws/credentials or .env) sets a floor of ask. Reading a sensitive file is the model's weakest case, which is why that one is a pattern. The patterns can only tighten a decision. They never allow anything.
 2. Jev answers four questions about the action: is it destructive, would it leak private data, is it off task, and how risky is it (a 0 to 4 score). Thresholds turn the answers into a decision.
 
 | Result | When | Exit code |

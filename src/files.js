@@ -15,6 +15,11 @@ export function readTextFile(p, { root = process.env.JEV_ROOT || process.cwd(), 
   if (typeof p !== 'string' || !p) throw new JevError('path must be a non-empty string', { code: 'bad_input' });
   let real;
   let realRoot;
+  // reject escapes before touching the disk, so the message is always the same
+  const lexical = relative(resolve(root), resolve(root, p));
+  if (lexical.startsWith('..') || isAbsolute(lexical)) {
+    throw new JevError('path must be inside the working directory', { code: 'bad_input' });
+  }
   try {
     realRoot = realpathSync(root);
     real = realpathSync(resolve(realRoot, p));

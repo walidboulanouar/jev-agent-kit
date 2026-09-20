@@ -41,6 +41,24 @@ To get `jev` on your path, run `npm link` inside the folder. The package has no 
 | none | `jev_ask` | Raw access: send your own state and questions |
 | `jev mcp` | (the server) | Run all of the above as an MCP server on stdio. `jev-mcp` starts it directly. |
 
+## MCP tool arguments
+
+| Tool | Required | Optional |
+| --- | --- | --- |
+| `jev_check` | `text`, `question` | `threshold` |
+| `jev_choose` | `text`, `options` (object of name to meaning) | `question`, `minConfidence` |
+| `jev_score` | `text`, `question`, `levels` (ordered array) | none |
+| `jev_judge` | `text`, `questions` (array) | `threshold` |
+| `jev_route` | `task`, `candidates` (array of strings or `{id, description}`) | `k`, `minConfidence` |
+| `jev_triage` | `labels` (object), and `path` or `items` | `minConfidence` |
+| `jev_guard` | `action` | `context` |
+| `jev_grep` | `query`, and `path` or `lines` | `threshold`, `invert` |
+| `jev_rank` | `criterion`, and `path` or `items` | `levels`, `top` |
+| `jev_compact` | `task`, and `path` or `lines` | `threshold`, `context`, `always` |
+| `jev_ask` | `questions` | `state` |
+
+`triage` and `rank` results carry `id` and `n`, both the 1-based position of the item. `grep` and `compact` results carry `n` and `line`.
+
 ## Exit codes
 
 Scripts must treat 3 differently from 1. Under `set -e`, a definite "no" exits 1 and will stop a script.
@@ -151,7 +169,7 @@ It costs one API request per matching tool call, so keep the matcher narrow. In 
 - The API key is read from `TYPESAFE_API_KEY`, `JEV_API_KEY` or `~/.config/jev/key`. It is never printed or written by this tool, and it is never sent over plain http to a remote host.
 - Requests retry on 429 and 5xx with backoff. Each attempt times out after 20 seconds, so a bad outage can take about a minute before you see an error.
 - Batch tools send several questions per request and run up to 4 requests at once: 8 items for `triage` and `rank`, 12 lines for `grep` and `compact`.
-- Texts are clipped before sending: 1,500 characters per item, 600 per line, 8,000 for `check`, `choose`, `score` and `judge`, 4,000 for a `guard` action. A longer `guard` action is judged on its head and tail and can only be `ask` or `deny`. `grep` and `compact` handle at most 5,000 lines and tell you when they stop early.
+- Texts are clipped before sending: 1,500 characters per item, 600 per line, 8,000 for `check`, `choose`, `score` and `judge`, 4,000 for a `guard` action and for a `route` task. A longer `guard` action is judged on its head and tail and can only be `ask` or `deny`. `grep` and `compact` handle at most 5,000 lines and tell you when they stop early.
 - A missing model answer is never treated as a confident one. `guard` asks, `route` abstains, `triage` gives a null label, `grep` reports the line as unknown, `compact` keeps the line.
 - Unknown flags are errors, not silently ignored.
 

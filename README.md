@@ -52,7 +52,7 @@ To get `jev` on your path, run `npm link` inside the folder. The package has no 
 | `jev_route` | `task`, `candidates` (array of strings or `{id, description}`) | `k`, `minConfidence` |
 | `jev_triage` | `labels` (object), and `path` or `items` | `minConfidence` |
 | `jev_guard` | `action` | `context` |
-| `jev_grep` | `query`, and `path` or `lines` | `threshold`, `invert` |
+| `jev_grep` | `query`, and `path` or `lines` | `threshold`, `invert`, `max` (lines to search, 1 to 5000) |
 | `jev_rank` | `criterion`, and `path` or `items` | `levels`, `top` |
 | `jev_compact` | `task`, and `path` or `lines` | `threshold`, `context`, `alwaysWords` (list of plain words) |
 | `jev_ask` | `questions` | `state` |

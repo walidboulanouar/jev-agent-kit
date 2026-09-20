@@ -166,9 +166,9 @@ export const DEFAULT_POLICY = {
 // Every pattern uses bounded quantifiers and runs on a bounded window, so a
 // hostile 1 MB action cannot make it slow (ReDoS).
 const HARD_DENY = [
-  [/\brm\s{1,5}(-[a-zA-Z]{1,10}\s{1,5}){1,4}["']?(\/|~|\$HOME)\/?\*?["']?(\s|$)/, 'recursive delete of root or home'],
+  [/\brm\s{1,5}((-[a-zA-Z]{1,10}|--(recursive|force|no-preserve-root)|--)\s{1,5}){1,5}["']?(\/|~|\$HOME|\$\{HOME\})\/?\*?["']?(\s|[;&|)]|$)/, 'recursive delete of root or home'],
   [/\brm\b[^\n]{0,80}--no-preserve-root/, 'recursive delete with the root safeguard off'],
-  [/(^|[;&|]\s{0,5}|\bsudo\s{1,5})mkfs(\.\w{1,10})?\b/, 'formats a disk'],
+  [/(^|[;&|(){}`\n]\s{0,5}|\bsudo(\s{1,5}-\S{1,20}){0,3}\s{1,5}|\b(env|nohup|time|exec|xargs)\s{1,5}(\S{1,40}=\S{0,40}\s{1,5}){0,3}|\b(ba|z)?sh\s{1,5}-c\s{1,5}["']\s{0,5}|\/s?bin\/)mkfs(\.\w{1,10})?(\s|$)/, 'formats a disk'],
   [/\bdd\b[^\n]{0,200}\bof=\/dev\/(sd|nvme|disk|hd)/, 'writes raw to a disk device'],
   [/:\(\)\s{0,3}\{\s{0,3}:\|:&\s{0,3}\};:/, 'fork bomb'],
 ];

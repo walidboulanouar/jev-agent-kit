@@ -22,6 +22,9 @@ test('guard denies rm on root and home in the common spellings', async () => {
   for (const a of ['rm -rf /', 'rm -rf /*', 'rm -rf "/"', "rm -rf '/'", 'rm -rf ~', 'rm -rf ~/*', 'rm -fr $HOME', 'rm -rf $HOME/*', 'rm -r -f /', 'rm -rf --no-preserve-root /']) {
     assert.equal((await tools.guard(safeModel, { action: a })).decision, 'deny', a);
   }
+  for (const a of ['rm -rf -- /', 'rm --recursive --force /', 'rm -rf ${HOME}', 'rm -rf /*;', 'sudo -n mkfs.ext4 /dev/sda', 'bash -c "mkfs /dev/sda"', '(mkfs /dev/sda)', '$(mkfs /dev/sda)', '/sbin/mkfs.ext4 /dev/sda']) {
+    assert.equal((await tools.guard(safeModel, { action: a })).decision, 'deny', a);
+  }
   for (const a of ['rm -rf ~/projects/old', 'rm -rf ./build', 'rm -rf /tmp/scratch', 'rm file.txt']) {
     assert.notEqual((await tools.guard(safeModel, { action: a })).decision, 'deny', a);
   }
@@ -73,7 +76,7 @@ if grep -q SECRETTOKEN123 "$file"; then exit 0; else exit 1; fi
 
 test('ci-gate blocks a secret that straddles a window boundary (many padding values)', () => {
   // the diff has a fixed header, so try a range of paddings around 5000 to 6000
-  for (const pad of [5850, 5880, 5900, 5950, 5980, 6000, 6100, 4900, 4990, 10990]) {
+  for (const pad of [5850, 5880, 5900, 5950, 5980, 6000, 6100, 4900, 4990, 3990, 7900, 10990]) {
     const r = runGate({ pad, fake: fakeFindsToken });
     assert.equal(r.status, 1, `pad ${pad} slipped through: ${r.stderr}`);
   }

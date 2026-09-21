@@ -92,6 +92,10 @@ The MCP batch tools (`jev_compact`, `jev_grep`, `jev_triage`, `jev_rank`) accept
 
 Any MCP client works. The server speaks newline-delimited JSON-RPC on stdio and supports protocol versions 2025-06-18, 2025-03-26 and 2024-11-05. Replies can come back out of order. Match them by `id`.
 
+## Use cases
+
+Six complete, runnable use cases are in [use-cases](use-cases): a guard for Claude Code, a build-log compactor, a skill router, issue triage, semantic log search and a PR ranker. Each has sample data and a `run.sh`.
+
 ## Examples
 
 Route a task:

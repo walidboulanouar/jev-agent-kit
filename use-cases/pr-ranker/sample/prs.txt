@@ -1,0 +1,10 @@
+Fix SQL injection in the search endpoint
+Bump eslint from 8.56 to 8.57
+Hotfix: checkout returns 500 for all EU customers
+Rename internal helper functions for consistency
+Add dark mode toggle to the settings page
+Update README badge colors
+Patch expired TLS certificate check that lets invalid certs through
+Refactor billing module into smaller files
+Fix typo in error message
+Add retry logic to the webhook sender

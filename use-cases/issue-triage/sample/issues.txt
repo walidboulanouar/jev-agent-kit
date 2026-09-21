@@ -1,0 +1,12 @@
+App crashes with a null pointer error when I open settings on Android
+How do I configure the webhook secret for the self-hosted version?
+Add dark mode to the dashboard
+Typo in the installation guide: "instal" should be "install"
+Login button does nothing after the 2.3 update
+Can you support exporting reports as CSV?
+The API returns 500 when the query string contains an ampersand
+Is there a way to run this behind a corporate proxy?
+Please document the rate limits for the public API
+Timeout error when uploading files larger than 10 MB
+Allow scheduling reports to be emailed weekly
+README links to a page that no longer exists

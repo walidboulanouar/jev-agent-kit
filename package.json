@@ -1,5 +1,5 @@
 {
-  "name": "jevkit",
+  "name": "@walidboulanouar/jevkit",
   "version": "0.2.0",
   "description": "Fast typed decisions for agents: CLI and MCP tools (route, triage, guard, grep, rank, compact, judge) on TypeSafe Jev. Zero dependencies.",
   "type": "module",

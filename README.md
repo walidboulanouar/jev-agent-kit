@@ -23,17 +23,17 @@ Unofficial. Not affiliated with TypeSafe AI.
 
 ```bash
 export TYPESAFE_API_KEY=your_key      # or write the key to ~/.config/jev/key
-npx jevkit@0.2.0 doctor               # prints "ok" when the key works
+npx @walidboulanouar/jevkit@0.2.0 doctor               # prints "ok" when the key works
 ```
 
 Or install it globally so `jev` is on your path:
 
 ```bash
-npm install -g jevkit@0.2.0
+npm install -g @walidboulanouar/jevkit@0.2.0
 jev doctor
 ```
 
-The package has no dependencies. Examples below use `jev`. With npx, write `npx jevkit@0.2.0` instead. To work from a clone, run `node bin/jev.js` from the repo.
+The package has no dependencies. Examples below use `jev`. With npx, write `npx @walidboulanouar/jevkit@0.2.0` instead. To work from a clone, run `node bin/jev.js` from the repo.
 
 `JEV_MODEL` picks the model (default `jev-latest`, which TypeSafe can move to a newer version, so pin `jev-1.13.0` if you need stable behavior). `JEV_API_URL` overrides the endpoint. It must be https, except for localhost.
 
@@ -90,7 +90,7 @@ Scripts must treat 3 differently from 1. Under `set -e`, a definite "no" exits 1
 Add the MCP server:
 
 ```bash
-claude mcp add jev -e TYPESAFE_API_KEY=your_key -- npx -y jevkit@0.2.0 mcp
+claude mcp add jev -e TYPESAFE_API_KEY=your_key -- npx -y @walidboulanouar/jevkit@0.2.0 mcp
 ```
 
 Add the skill so Claude knows when to reach for it:

@@ -1,4 +1,8 @@
-# jev-agent-kit
+<p align="center">
+  <img src="assets/banner.png" alt="jevkit: fast typed decisions for agents" width="100%">
+</p>
+
+# jevkit
 
 Small command line and MCP tools that give agents fast, typed decisions from [TypeSafe's Jev model](https://typesafe.ai). One binary, no dependencies, Node 18 or newer.
 
@@ -6,21 +10,30 @@ Jev does not write text. It answers questions about text with a number: a probab
 
 It pays off when a decision runs in a batch or a gate: many lines, many items, or a check that runs on every tool call. For a single one-off question, your agent is already an LLM and does not need this.
 
+<p align="center">
+  <img src="assets/flow.png" alt="Text goes into Jev, a number comes out, your code decides" width="100%">
+</p>
+
 Unofficial. Not affiliated with TypeSafe AI.
 
 ## Install
 
 1. Get an API key from [TypeSafe](https://typesafe.ai) (the console is at https://console.typesafe.ai).
-2. Clone and check it works:
+2. Run it with npx, pinned to a version:
 
 ```bash
-git clone https://github.com/walidboulanouar/jev-agent-kit
-cd jev-agent-kit
 export TYPESAFE_API_KEY=your_key      # or write the key to ~/.config/jev/key
-node bin/jev.js doctor                # prints "ok" when the key works
+npx jevkit@0.2.0 doctor               # prints "ok" when the key works
 ```
 
-To get `jev` on your path, run `npm link` inside the folder. The package has no dependencies, so there is nothing else to install. Examples below use `jev`. Without `npm link`, use `node /path/to/jev-agent-kit/bin/jev.js`.
+Or install it globally so `jev` is on your path:
+
+```bash
+npm install -g jevkit@0.2.0
+jev doctor
+```
+
+The package has no dependencies. Examples below use `jev`. With npx, write `npx jevkit@0.2.0` instead. To work from a clone, run `node bin/jev.js` from the repo.
 
 `JEV_MODEL` picks the model (default `jev-latest`, which TypeSafe can move to a newer version, so pin `jev-1.13.0` if you need stable behavior). `JEV_API_URL` overrides the endpoint. It must be https, except for localhost.
 
@@ -77,12 +90,13 @@ Scripts must treat 3 differently from 1. Under `set -e`, a definite "no" exits 1
 Add the MCP server:
 
 ```bash
-claude mcp add jev -e TYPESAFE_API_KEY=your_key -- node /path/to/jev-agent-kit/bin/jev.js mcp
+claude mcp add jev -e TYPESAFE_API_KEY=your_key -- npx -y jevkit@0.2.0 mcp
 ```
 
 Add the skill so Claude knows when to reach for it:
 
 ```bash
+# from a clone of the repo:
 cp -r skills/jev ~/.claude/skills/
 ```
 
@@ -92,9 +106,29 @@ The MCP batch tools (`jev_compact`, `jev_grep`, `jev_triage`, `jev_rank`) accept
 
 Any MCP client works. The server speaks newline-delimited JSON-RPC on stdio and supports protocol versions 2025-06-18, 2025-03-26 and 2024-11-05. Replies can come back out of order. Match them by `id`.
 
-## Use cases
+## Six use cases
 
-Six complete, runnable use cases are in [use-cases](use-cases): a guard for Claude Code, a build-log compactor, a skill router, issue triage, semantic log search and a PR ranker. Each has sample data and a `run.sh`.
+Each is a runnable project with sample data in [use-cases](use-cases). Every result below came from a real run on 2026-09-20.
+
+<p align="center">
+  <a href="use-cases/guard-claude-code"><img src="assets/case-01.png" alt="Guard for Claude Code" width="32%"></a>
+  <a href="use-cases/build-log-compactor"><img src="assets/case-02.png" alt="Build log compactor" width="32%"></a>
+  <a href="use-cases/skill-router"><img src="assets/case-03.png" alt="Skill router" width="32%"></a>
+  <a href="use-cases/issue-triage"><img src="assets/case-04.png" alt="Issue triage" width="32%"></a>
+  <a href="use-cases/semantic-log-search"><img src="assets/case-05.png" alt="Semantic log search" width="32%"></a>
+  <a href="use-cases/pr-ranker"><img src="assets/case-06.png" alt="PR ranker" width="32%"></a>
+</p>
+
+Here is the guard use case on six sample tool calls, and the PR ranker on ten sample titles:
+
+<p align="center">
+  <img src="assets/terminal-guard.png" alt="Guard output for six sample commands" width="100%">
+</p>
+<p align="center">
+  <img src="assets/terminal-rank.png" alt="PR ranker output" width="100%">
+</p>
+
+Six more one-liners (commit message lint, prompt-injection screen for retrieved text, support urgency, changelog classification, personal data in logs, meeting action items) are in [docs/recipes.md](docs/recipes.md).
 
 ## Examples
 

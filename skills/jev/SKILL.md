@@ -64,4 +64,4 @@ jev triage -o bug="something broken" -o ask="a question" -o idea="a feature requ
 jev guard --context "$USER_REQUEST" "$COMMAND"   # exit 0 allow, 2 ask, 1 deny, 3 error
 ```
 
-If `jev` is not on the path, use `node /path/to/jev-agent-kit/bin/jev.js`.
+If `jev` is not on the path, use `npx jevkit@0.2.0` (for example `npx jevkit@0.2.0 compact "task"`).

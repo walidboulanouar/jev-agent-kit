@@ -1,13 +1,14 @@
 {
-  "name": "jev-agent-kit",
+  "name": "jevkit",
   "version": "0.2.0",
-  "description": "Composable CLI and MCP tools that give agents fast typed decisions from TypeSafe's Jev model: route, triage, guard, grep, rank, compact.",
+  "description": "Fast typed decisions for agents: CLI and MCP tools (route, triage, guard, grep, rank, compact, judge) on TypeSafe Jev. Zero dependencies.",
   "type": "module",
   "license": "MIT",
   "engines": {
     "node": ">=18.17"
   },
   "bin": {
+    "jevkit": "bin/jev.js",
     "jev": "bin/jev.js",
     "jev-mcp": "bin/jev-mcp.js"
   },
@@ -17,6 +18,9 @@
     "docs",
     "skills",
     "examples",
+    "use-cases",
+    "scripts",
+    "test/fixtures",
     "README.md",
     "LICENSE"
   ],
@@ -28,10 +32,26 @@
     "jev",
     "typesafe",
     "mcp",
+    "mcp-server",
     "agents",
     "cli",
     "claude-code",
+    "guardrails",
     "router",
-    "guardrails"
-  ]
+    "llm-router",
+    "triage",
+    "ai-agents"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/walidboulanouar/jev-agent-kit.git"
+  },
+  "homepage": "https://github.com/walidboulanouar/jev-agent-kit#readme",
+  "bugs": {
+    "url": "https://github.com/walidboulanouar/jev-agent-kit/issues"
+  },
+  "author": "Walid Boulanouar",
+  "publishConfig": {
+    "access": "public"
+  }
 }

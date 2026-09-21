@@ -5,7 +5,7 @@ import * as tools from './tools.js';
 import { JevError } from './client.js';
 
 const SUPPORTED = ['2025-06-18', '2025-03-26', '2024-11-05'];
-const SERVER_INFO = { name: 'jev-agent-kit', version: '0.2.0' };
+const SERVER_INFO = { name: 'jevkit', version: '0.2.0' };
 
 const str = (d) => ({ type: 'string', description: d });
 const num = (d) => ({ type: 'number', description: d });

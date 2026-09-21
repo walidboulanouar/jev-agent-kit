@@ -140,7 +140,7 @@ test('MCP: initialize, list, call, errors and notifications', async () => {
   const { mock, client } = await mk();
   const init = await handle(client, { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05' } });
   assert.equal(init.result.protocolVersion, '2024-11-05');
-  assert.equal(init.result.serverInfo.name, 'jev-agent-kit');
+  assert.equal(init.result.serverInfo.name, 'jevkit');
   const unknown = await handle(client, { jsonrpc: '2.0', id: 2, method: 'initialize', params: { protocolVersion: '1999-01-01' } });
   assert.ok(['2025-06-18', '2025-03-26', '2024-11-05'].includes(unknown.result.protocolVersion));
   assert.equal(await handle(client, { jsonrpc: '2.0', method: 'notifications/initialized' }), null);
